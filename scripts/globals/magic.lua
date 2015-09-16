@@ -514,8 +514,6 @@ function getMagicHitRate(caster, target, skillType, element, fullBonus, minorBon
         magicacc = magicacc + caster:getSkillLevel(skillType) + caster:getMod(79 + skillType);
     end
 
-    magicacc = magicacc + fullBonus;
-
     local resMod = 0; -- Some spells may possibly be non elemental, but have status effects.
     if (element > ELE_NONE) then
         resMod = target:getMod(resistMod[element]);
@@ -540,39 +538,22 @@ function getMagicHitRate(caster, target, skillType, element, fullBonus, minorBon
     -- Base magic evasion (base magic evasion plus resistances(players), plus elemental defense(mobs)
     local magiceva = target:getMod(MOD_MEVA) + resMod;
 
-    magicacc = magicacc + (minorBonus / 2);
+    magicacc = magicacc + minorBonus;
 
-    return calculateMagicHitRate(magicacc, magiceva, caster:getMainLvl(), target:getMainLvl());
+    return calculateMagicHitRate(magicacc, magiceva, fullBonus, caster:getMainLvl(), target:getMainLvl());
 end
 
-function calculateMagicHitRate(magicacc, magiceva, casterLvl, targetLvl)
+function calculateMagicHitRate(magicacc, magiceva, bonus, casterLvl, targetLvl)
     local p = 0;
-
-    --get the difference of acc and eva, scale with level (3.33 at 10 to 0.44 at 75)
-    local multiplier = 0;
-    if casterLvl < 40 then
-        multiplier = 100 / 120;
-    else
-        multiplier = 100 / (casterLvl * 3);
-    end;
-    p = (magicacc * multiplier) - (magiceva * 0.45);
-
-    --double any acc over 50 if it's over 50
-    if (p > 5) then
-        p = 5 + (p - 5) * 2;
-    end
-
-    --add a flat bonus that won't get doubled in the previous step
-    p = p + 45;
-
     --add a scaling bonus or penalty based on difference of targets level from caster
-    local leveldiff = casterLvl - targetLvl;
-    if (leveldiff < 0) then
-        p = p - (25 * ( (casterLvl) / 75 )) + leveldiff;
-    else
-        p = p + (25 * ( (casterLvl) / 75 )) + leveldiff;
-    end
-    -- printf("acc: %f, eva: %f, bonus: %f, element: %u, leveldiff: %f", magicacc, magiceva, minorBonus, element, leveldiff);
+    local levelDiff = casterLvl - targetLvl;
+
+    -- mobs gradually get more resistant to magic
+    local scale = 1 + targetLvl / 255;
+
+    p = 50 - 0.5 * (magiceva * scale - magicacc) + levelDiff * 2 + bonus;
+
+    -- printf("P: %f, acc: %f, eva: %f, bonus: %f, leveldiff: %f", p, magicacc, magiceva, bonus, levelDiff);
 
     return utils.clamp(p, 5, 95);
 end
@@ -1375,7 +1356,7 @@ function outputMagicHitRateInfo()
                     magicAcc = magicAcc + dINT;
                 end
 
-                local magicHitRate = calculateMagicHitRate(magicAcc, magicEva, casterLvl, targetLvl);
+                local magicHitRate = calculateMagicHitRate(magicAcc, magicEva, 0, casterLvl, targetLvl);
 
                 printf("Lvl: %d vs %d, %d%%, MA: %d, ME: %d", casterLvl, targetLvl, magicHitRate, magicAcc, magicEva);
             end
