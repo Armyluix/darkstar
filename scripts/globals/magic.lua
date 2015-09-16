@@ -502,7 +502,6 @@ function getMagicHitRate(caster, target, skillType, element, fullBonus, minorBon
 
     local magicacc = 0;
     local magiceva = 0;
-    local p = 0;
 
     if (minorBonus == nil) then
         minorBonus = 0;
@@ -541,16 +540,22 @@ function getMagicHitRate(caster, target, skillType, element, fullBonus, minorBon
     -- Base magic evasion (base magic evasion plus resistances(players), plus elemental defense(mobs)
     local magiceva = target:getMod(MOD_MEVA) + resMod;
 
+    magicacc = magicacc + (minorBonus / 2);
+
+    return calculateMagicHitRate(magicacc, magiceva, caster:getMainLvl(), target:getMainLvl());
+end
+
+function calculateMagicHitRate(magicacc, magiceva, casterLvl, targetLvl)
+    local p = 0;
+
     --get the difference of acc and eva, scale with level (3.33 at 10 to 0.44 at 75)
     local multiplier = 0;
-    if caster:getMainLvl() < 40 then
+    if casterLvl < 40 then
         multiplier = 100 / 120;
     else
-        multiplier = 100 / (caster:getMainLvl() * 3);
+        multiplier = 100 / (casterLvl * 3);
     end;
     p = (magicacc * multiplier) - (magiceva * 0.45);
-    --add magicacc bonus
-    p = p + (minorBonus / 2);
 
     --double any acc over 50 if it's over 50
     if (p > 5) then
@@ -561,11 +566,11 @@ function getMagicHitRate(caster, target, skillType, element, fullBonus, minorBon
     p = p + 45;
 
     --add a scaling bonus or penalty based on difference of targets level from caster
-    local leveldiff = caster:getMainLvl() - target:getMainLvl();
+    local leveldiff = casterLvl - targetLvl;
     if (leveldiff < 0) then
-        p = p - (25 * ( (caster:getMainLvl()) / 75 )) + leveldiff;
+        p = p - (25 * ( (casterLvl) / 75 )) + leveldiff;
     else
-        p = p + (25 * ( (caster:getMainLvl()) / 75 )) + leveldiff;
+        p = p + (25 * ( (casterLvl) / 75 )) + leveldiff;
     end
     -- printf("acc: %f, eva: %f, bonus: %f, element: %u, leveldiff: %f", magicacc, magiceva, minorBonus, element, leveldiff);
 
@@ -1344,3 +1349,39 @@ function calculateBarspellPower(caster,enhanceSkill)
 
     return power;
 end
+
+-- Output magic hit rate for all levels
+function outputMagicHitRateInfo()
+    for casterLvl = 0, 75 do
+
+        printf("");
+        printf("-------- CasterLvl: %d", casterLvl);
+
+        for lvlMod = -5, 10 do
+
+            local targetLvl = casterLvl + lvlMod;
+
+            if(targetLvl >= 0) then
+                -- assume BLM spell, A+
+                local magicAcc = getSkillLvl(1, casterLvl);
+                -- assume default monster magic eva, D
+                local magicEva = getSkillLvl(10, targetLvl);
+
+                local dINT = (lvlMod + 1) * -1;
+
+                if (dINT > 10) then
+                    magicAcc = magicAcc + 10 + (dINT - 10)/2;
+                else
+                    magicAcc = magicAcc + dINT;
+                end
+
+                local magicHitRate = calculateMagicHitRate(magicAcc, magicEva, casterLvl, targetLvl);
+
+                printf("Lvl: %d vs %d, %d%%, MA: %d, ME: %d", casterLvl, targetLvl, magicHitRate, magicAcc, magicEva);
+            end
+
+        end
+    end
+end;
+
+outputMagicHitRateInfo();
