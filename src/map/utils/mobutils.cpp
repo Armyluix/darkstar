@@ -613,15 +613,19 @@ void CalculateStats(CMobEntity * PMob)
     PMob->addModifier(MOD_ATT, GetBase(PMob,PMob->attRank));
     PMob->addModifier(MOD_ACC, GetBase(PMob,PMob->accRank));
 
-    SKILLTYPE mEvasionRating = SKILL_ELE;
+    uint8 mEvaRank = 6;
 
-    if(mLvl > 83)
+    if(mLvl > 60)
     {
-        mEvasionRating = SKILL_SWD;
+        mEvaRank = 2;
+    }
+    else if(mLvl > 50)
+    {
+        mEvaRank = 4;
     }
 
     //natural magic evasion
-    PMob->addModifier(MOD_MEVA, battleutils::GetMaxSkill(mEvasionRating, JOB_RDM, mLvl > 99 ? 99 : mLvl));
+    PMob->addModifier(MOD_MEVA, battleutils::GetMaxSkill(mEvaRank, (mLvl > 99) ? 99 : mLvl));
 
     if((PMob->m_Type & MOBTYPE_NOTORIOUS) && mJob == JOB_WHM && mLvl >= 25)
     {

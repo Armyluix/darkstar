@@ -548,12 +548,9 @@ function calculateMagicHitRate(magicacc, magiceva, bonus, casterLvl, targetLvl)
     --add a scaling bonus or penalty based on difference of targets level from caster
     local levelDiff = utils.clamp(casterLvl - targetLvl, -5, 5);
 
-    -- mobs gradually get more resistant to magic
-    local scale = 1 + targetLvl / 255;
+    p = 50 - 0.5 * (magiceva - magicacc) + levelDiff * 2 + bonus;
 
-    p = 50 - 0.5 * (magiceva * scale - magicacc) + levelDiff * 2 + bonus;
-
-    -- printf("P: %f, acc: %f, eva: %f, bonus: %f, leveldiff: %f", p, magicacc, magiceva, bonus, levelDiff);
+    printf("P: %f, acc: %f, eva: %f, bonus: %f, leveldiff: %f", p, magicacc, magiceva, bonus, levelDiff);
 
     return utils.clamp(p, 5, 95);
 end
@@ -1346,7 +1343,15 @@ function outputMagicHitRateInfo()
                 -- assume BLM spell, A+
                 local magicAcc = getSkillLvl(1, casterLvl);
                 -- assume default monster magic eva, D
-                local magicEva = getSkillLvl(10, targetLvl);
+                local magicEvaRank = 6;
+
+                if(targetLvl > 60) then
+                    magicEvaRank = 2;
+                elseif(targetLvl > 50) then
+                    magicEvaRank = 4;
+                end
+
+                local magicEva = getSkillLvl(magicEvaRank, targetLvl);
 
                 local dINT = (lvlMod + 1) * -1;
 
@@ -1365,4 +1370,4 @@ function outputMagicHitRateInfo()
     end
 end;
 
--- outputMagicHitRateInfo();
+outputMagicHitRateInfo();
