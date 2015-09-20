@@ -334,21 +334,21 @@ function applyResistance(player,spell,target,diff,skill,bonus)
         end
     end
 
-    local magicacc = 0;
+    local percentBonus = 0;
 
     if player:hasStatusEffect(EFFECT_ALTRUISM) and spell:getSpellGroup() == SPELLGROUP_WHITE then
-        magicacc = magicacc + player:getStatusEffect(EFFECT_ALTRUISM):getPower();
+        magicaccbonus = magicaccbonus + player:getStatusEffect(EFFECT_ALTRUISM):getPower();
     end
 	
     if player:hasStatusEffect(EFFECT_FOCALIZATION) and spell:getSpellGroup() == SPELLGROUP_BLACK then
-        magicacc = magicacc + player:getStatusEffect(EFFECT_FOCALIZATION):getPower();
+        magicaccbonus = magicaccbonus + player:getStatusEffect(EFFECT_FOCALIZATION):getPower();
     end
     --difference in int/mnd
 	
     if (diff > 10) then
-        magicacc = magicacc + 10 + (diff - 10)/2;
+        magicaccbonus = magicaccbonus + 10 + (diff - 10)/2;
     else
-        magicacc = magicacc + diff;
+        magicaccbonus = magicaccbonus + diff;
     end
 	
     --Add acc for dark seal
@@ -376,7 +376,7 @@ function applyResistance(player,spell,target,diff,skill,bonus)
         magicaccbonus = magicaccbonus + 25;
     end
 
-    local p = getMagicHitRate(player, target, skill, element, magicacc, magicaccbonus);
+    local p = getMagicHitRate(player, target, skill, element, percentBonus, magicaccbonus);
 
     return getMagicResist(p);
 end;
@@ -395,7 +395,7 @@ function applyResistanceEffect(player,spell,target,diff,skill,bonus,effect)
 
     local magicaccbonus = 0;
     local element = spell:getElement();
-    local magicacc = 0;
+    local percentBonus = 0;
 
     if (bonus ~= nil) then
         magicaccbonus = magicaccbonus + bonus;
@@ -408,17 +408,17 @@ function applyResistanceEffect(player,spell,target,diff,skill,bonus,effect)
     end
 
     if player:hasStatusEffect(EFFECT_ALTRUISM) and spell:getSpellGroup() == SPELLGROUP_WHITE then
-      magicacc = magicacc + player:getStatusEffect(EFFECT_ALTRUISM):getPower();
+      magicaccbonus = magicaccbonus + player:getStatusEffect(EFFECT_ALTRUISM):getPower();
     end
     if player:hasStatusEffect(EFFECT_FOCALIZATION) and spell:getSpellGroup() == SPELLGROUP_BLACK then
-      magicacc = magicacc + player:getStatusEffect(EFFECT_FOCALIZATION):getPower();
+      magicaccbonus = magicaccbonus + player:getStatusEffect(EFFECT_FOCALIZATION):getPower();
     end
 
     --difference in int/mnd
     if (diff > 10) then
-        magicacc = magicacc + 10 + (diff - 10)/2;
+        magicaccbonus = magicaccbonus + 10 + (diff - 10)/2;
     else
-        magicacc = magicacc + diff;
+        magicaccbonus = magicaccbonus + diff;
     end
     --add acc for ele/dark seal
     if (player:getStatusEffect(EFFECT_DARK_SEAL) ~= nil and skill == DARK_MAGIC_SKILL) then
@@ -465,7 +465,7 @@ function applyResistanceEffect(player,spell,target,diff,skill,bonus,effect)
         end
 
         if (effectres > 0) then
-            magicacc = magicacc - target:getMod(effectres);
+            percentBonus = percentBonus - target:getMod(effectres);
         end
 
         if(effect == EFFECT_LULLABY) then
@@ -473,7 +473,7 @@ function applyResistanceEffect(player,spell,target,diff,skill,bonus,effect)
         end
     end
 
-    local p = getMagicHitRate(player, target, skill, element, magicacc, magicaccbonus);
+    local p = getMagicHitRate(player, target, skill, element, percentBonus, magicaccbonus);
 
     return getMagicResist(p);
 end;
@@ -494,7 +494,7 @@ function applyResistanceAddEffect(player,target,element,bonus)
     return getMagicResist(p);
 end;
 
-function getMagicHitRate(caster, target, skillType, element, fullBonus, minorBonus)
+function getMagicHitRate(caster, target, skillType, element, percentBonus, bonusAcc)
     -- resist everything if magic shield is active
     if (target:hasStatusEffect(EFFECT_MAGIC_SHIELD, 0)) then
         return 0;
@@ -503,8 +503,8 @@ function getMagicHitRate(caster, target, skillType, element, fullBonus, minorBon
     local magicacc = 0;
     local magiceva = 0;
 
-    if (minorBonus == nil) then
-        minorBonus = 0;
+    if (bonusAcc == nil) then
+        bonusAcc = 0;
     end
 
     -- Get the base acc (just skill + skill mod (79 + skillID = ModID) + magic acc mod)
@@ -522,35 +522,35 @@ function getMagicHitRate(caster, target, skillType, element, fullBonus, minorBon
     if (element > ELE_NONE) then
         -- Add acc for staves
         local affinityBonus = AffinityBonus(caster, element);
-        minorBonus = minorBonus + (affinityBonus-1) * 200;
+        bonusAcc = bonusAcc + (affinityBonus-1) * 200;
     end
 
     --add acc for RDM group 1 merits
     if (element > 0 and element <= 6) then
-        minorBonus = minorBonus + caster:getMerit(rdmMerit[element]);
+        bonusAcc = bonusAcc + caster:getMerit(rdmMerit[element]);
     end
 
     -- BLU mag acc merits - nuke acc is handled in bluemagic.lua
     if (skill == BLUE_SKILL) then
-        minorBonus = minorBonus + caster:getMerit(MERIT_MAGICAL_ACCURACY);
+        bonusAcc = bonusAcc + caster:getMerit(MERIT_MAGICAL_ACCURACY);
     end
 
     -- Base magic evasion (base magic evasion plus resistances(players), plus elemental defense(mobs)
     local magiceva = target:getMod(MOD_MEVA) + resMod;
 
-    magicacc = magicacc + minorBonus;
+    magicacc = magicacc + bonusAcc;
 
-    return calculateMagicHitRate(magicacc, magiceva, fullBonus, caster:getMainLvl(), target:getMainLvl());
+    return calculateMagicHitRate(magicacc, magiceva, percentBonus, caster:getMainLvl(), target:getMainLvl());
 end
 
-function calculateMagicHitRate(magicacc, magiceva, bonus, casterLvl, targetLvl)
+function calculateMagicHitRate(magicacc, magiceva, percentBonus, casterLvl, targetLvl)
     local p = 0;
     --add a scaling bonus or penalty based on difference of targets level from caster
     local levelDiff = utils.clamp(casterLvl - targetLvl, -5, 5);
 
-    p = 50 - 0.5 * (magiceva - magicacc) + levelDiff * 2 + bonus;
+    p = 50 - 0.5 * (magiceva - magicacc) + levelDiff * 2 + percentBonus;
 
-    printf("P: %f, acc: %f, eva: %f, bonus: %f, leveldiff: %f", p, magicacc, magiceva, bonus, levelDiff);
+    -- printf("P: %f, acc: %f, eva: %f, bonus: %f, leveldiff: %f", p, magicacc, magiceva, percentBonus, levelDiff);
 
     return utils.clamp(p, 5, 95);
 end
@@ -688,6 +688,55 @@ function getSkillLvl(rank,level)
 
     return skill;
 
+ end;
+
+ function getBase(rank, level)
+     if(level > 50) then
+         if(rank == 1) then
+             return 153+(level-50)*5.0;
+         end
+         if(rank == 2) then
+             return 147+(level-50)*4.9;
+         end
+         if(rank == 3) then
+             return 136+(level-50)*4.8;
+         end
+         if(rank == 4) then
+             return 126+(level-50)*4.7;
+         end
+         if(rank == 5) then
+             return 116+(level-50)*4.5;
+         end
+         if(rank == 6) then
+             return 106+(level-50)*4.4;
+         end
+         if(rank == 7) then
+             return 96+(level-50)*4.3;
+         end
+     end
+
+     if(rank == 1) then
+         return 6+(level-1)*3.0;
+     end
+     if(rank == 2) then
+         return 5+(level-1)*2.9;
+     end
+     if(rank == 3) then
+         return 5+(level-1)*2.8;
+     end
+     if(rank == 4) then
+         return 4+(level-1)*2.7;
+     end
+     if(rank == 5) then
+         return 4+(level-1)*2.5;
+     end
+     if(rank == 6) then
+         return 3+(level-1)*2.4;
+     end
+     if(rank == 7) then
+         return 3+(level-1)*2.3;
+     end
+    return 0;
  end;
 
 function handleAfflatusMisery(caster, spell, dmg)
@@ -1330,7 +1379,7 @@ end
 
 -- Output magic hit rate for all levels
 function outputMagicHitRateInfo()
-    for casterLvl = 0, 75 do
+    for casterLvl = 1, 75 do
 
         printf("");
         printf("-------- CasterLvl: %d", casterLvl);
@@ -1343,15 +1392,17 @@ function outputMagicHitRateInfo()
                 -- assume BLM spell, A+
                 local magicAcc = getSkillLvl(1, casterLvl);
                 -- assume default monster magic eva, D
-                local magicEvaRank = 6;
+                local magicEvaRank = 7;
 
-                if(targetLvl > 60) then
-                    magicEvaRank = 2;
-                elseif(targetLvl > 50) then
+                if(targetLvl > 50) then
                     magicEvaRank = 4;
+                elseif(targetLvl > 35) then
+                    magicEvaRank = 5;
+                elseif(targetLvl > 25) then
+                    magicEvaRank = 6;
                 end
 
-                local magicEva = getSkillLvl(magicEvaRank, targetLvl);
+                local magicEva = getBase(magicEvaRank, targetLvl);
 
                 local dINT = (lvlMod + 1) * -1;
 
@@ -1370,4 +1421,4 @@ function outputMagicHitRateInfo()
     end
 end;
 
-outputMagicHitRateInfo();
+-- outputMagicHitRateInfo();
